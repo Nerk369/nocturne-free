@@ -66,7 +66,7 @@ select.field{appearance:auto} .form-grid{display:grid;grid-template-columns:1fr 
 </style>
 <link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png"></head>
 <body><div class="app">
-<header><div><div class="brand">NOCTURNE</div><div class="sub">YOUR PRIVATE AI COMPANION</div></div><span class="pill">FREE · V1.1</span></header>
+<header><div><div class="brand">NOCTURNE</div><div class="sub">YOUR PRIVATE AI COMPANION</div></div><span class="pill">FREE · V1.1.1</span></header>
 <section id="home" class="view active"><h1>Deine Welt.</h1><div class="muted">Wähle eine Begleitung oder erschaffe einen neuen Charakter.</div><div class="section-head"><h2>Deine Charaktere</h2><span class="muted" id="count"></span></div><div class="cards" id="character-list"></div><div class="panel"><div style="font-family:Georgia,serif;font-size:17px">Ein Raum nur für dich.</div><p class="muted">Deine Charaktere werden lokal auf diesem Gerät gespeichert. NOCTURNE FREE nutzt derzeit keine bezahlten APIs. Mit einem eigenen kostenlosen Cloudflare-Worker kannst du echte KI-Chats aktivieren.</p></div></section>
 <section id="chat" class="view"><div class="section-head"><div><h1 id="chat-name">Alexandra</h1><div class="muted">Dein persönlicher Chat</div></div><button class="small-btn" onclick="showView('home')">← Charaktere</button></div><div class="chat-shell"><div class="chat-top"><div class="avatar" id="chat-avatar">A</div><div><strong id="chat-title">Alexandra</strong><div class="muted" id="chat-mode" style="font-size:11px">KI-Verbindung optional · Offline-Demo verfügbar</div></div></div><div class="chat-messages" id="messages"></div><div class="chat-compose"><input id="message-input" placeholder="Nachricht schreiben…" onkeydown="if(event.key==='Enter')sendMessage()"><button class="send" onclick="sendMessage()">Senden</button></div><div class="action-row"><button class="small-btn" onclick="openMemory()">🧠 Erinnerungen</button><button class="small-btn" onclick="demoImage()">＋ Bild anfragen</button><button class="small-btn" onclick="demoImage()">♡ Moment teilen</button></div></div></section>
 <section id="gallery" class="view"><h1>Galerie</h1><p class="muted">Deine lokal gespeicherten Charakterbilder und Bildideen. KI-Bildgenerierung ist noch nicht angebunden.</p><div class="panel"><label for="gallery-character">Charakter auswählen</label><select class="field" id="gallery-character" onchange="renderGallery()"></select><p class="muted">Speichere eigene Bilder für diesen Charakter. Eine automatische Bildgenerierung ist noch nicht verbunden.</p><input class="field" type="file" id="gallery-upload" accept="image/png,image/jpeg,image/webp" onchange="uploadGalleryImage(event)"></div><div class="gallery" id="gallery-items"></div></section>
@@ -106,6 +106,35 @@ function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;',
 function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));}
 function render(){const list=document.getElementById('character-list');list.innerHTML='';characters.forEach(c=>{const card=document.createElement('div');card.className='character';card.innerHTML='<div class="portrait">'+portraitMarkup(c)+'</div><div class="char-info"><div class="char-name">'+escapeHtml(c.name)+'</div><div class="tag">'+escapeHtml(c.style||'Realistisch').toUpperCase()+' · '+escapeHtml(c.age||'18')+' JAHRE</div><div class="char-actions"><button type="button" class="open">Chat öffnen</button><button type="button" class="edit">Bearbeiten</button></div></div>';card.querySelector('.open').onclick=()=>openChat(c.id);card.querySelector('.edit').onclick=()=>showModal(c.id);list.appendChild(card)});const add=document.createElement('button');add.className='add-card';add.innerHTML='<span class="plus">＋</span><strong>Charakter erstellen</strong><span class="muted">Deine eigene Persönlichkeit</span>';add.onclick=()=>showModal();list.appendChild(add);document.getElementById('count').textContent=characters.length+' Charaktere';}
 function field(key,c){const group=document.createElement('div');group.className='form-group'+(['name','personality'].includes(key)?' full':'');const label=document.createElement('label');label.htmlFor='field-'+key;label.textContent=labels[key];group.appendChild(label);let el;if(key==='name'){el=document.createElement('input');el.required=true;el.maxLength=50;}else if(key==='personality'){el=document.createElement('textarea');el.rows=3;el.maxLength=2000;}else{el=document.createElement('select');const values=key==='age'?Array.from({length:38},(_,i)=>String(i+18)):options[key];values.forEach(value=>{const o=document.createElement('option');o.value=value;o.textContent=value;el.appendChild(o)});}el.id='field-'+key;el.className='field';el.value=c?.[key]??(key==='age'?'25':'');group.appendChild(el);return group;}
+
+// Visual editor fields — restored in v1.1.1.
+const visualDefaults={face:'Oval',hairLength:'Schulterlang',hairStyle:'Offen',height:'Durchschnittlich',details:'Keine',outfit:'Elegant',pose:'Stehend',location:'Studio',camera:'Porträt'};
+const visualOptions={
+ face:['Oval','Rund','Herzförmig','Eckig','Schmal'],
+ hairLength:['Sehr kurz','Kurz','Schulterlang','Lang','Sehr lang'],
+ hairStyle:['Offen','Glatt','Wellig','Lockig','Pferdeschwanz','Dutt','Geflochten'],
+ height:['Klein','Durchschnittlich','Groß'],
+ outfit:['Alltag','Business','Elegant','Gothic','Sportlich','Abendkleid','Streetwear','Fantasy'],
+ pose:['Stehend','Sitzend','Gehend','Selfie','Nahaufnahme','Entspannt'],
+ location:['Studio','Café','Stadt bei Nacht','Zuhause','Natur','Luxushotel','Fantasy-Welt'],
+ camera:['Porträt','Oberkörper','Ganzkörper','Selfie','Filmische Szene']
+};
+const visualLabels={face:'Gesichtsform',hairLength:'Haarlänge',hairStyle:'Frisur',height:'Körpergröße',details:'Besondere Merkmale',outfit:'Outfit',pose:'Pose',location:'Umgebung',camera:'Bildformat / Perspektive'};
+function visualControls(c){
+ const wrap=document.createElement('div');wrap.className='preview-wrap';
+ const h=document.createElement('h2');h.textContent='Visueller Charaktereditor';wrap.appendChild(h);
+ const p=document.createElement('p');p.className='muted';p.textContent='Identität, Outfit und Bildszene werden separat gespeichert und für Bildbeschreibungen verwendet.';wrap.appendChild(p);
+ const v={...visualDefaults,...(c?.visual||{})};
+ Object.keys(visualLabels).forEach(k=>{
+  const label=document.createElement('label');label.htmlFor='visual-'+k;label.textContent=visualLabels[k];wrap.appendChild(label);
+  let el;if(k==='details'){el=document.createElement('input');el.type='text';el.maxLength=180;el.placeholder='z. B. Sommersprossen';el.value=v[k]||'';}
+  else{el=document.createElement('select');(visualOptions[k]||[]).forEach(val=>el.add(new Option(val,val)));if(!visualOptions[k].includes(v[k]))el.add(new Option(v[k],v[k]));el.value=v[k];}
+  el.id='visual-'+k;el.className='field';wrap.appendChild(el);
+ });
+ return wrap;
+}
+function readVisualFields(){const out={};Object.keys(visualLabels).forEach(k=>{out[k]=(document.getElementById('visual-'+k)?.value||visualDefaults[k]).trim()});return out;}
+
 function showModal(id=null){editId=id;const c=characters.find(x=>x.id===id);document.getElementById('modal-title').textContent=c?'Charakter bearbeiten':'Charakter erstellen';const wrap=document.getElementById('form-fields');wrap.innerHTML='';Object.keys(labels).forEach(key=>wrap.appendChild(field(key,c)));previewVariant=c?.previewVariant||0;wrap.appendChild(scenarioControls(c));wrap.appendChild(visualControls(c));wrap.appendChild(previewControls());wrap.appendChild(photoControls(c));wrap.querySelectorAll('select').forEach(el=>el.addEventListener('change',updatePreview));document.getElementById('modal').classList.add('open');updatePreview();}
 function hideModal(){document.getElementById('modal').classList.remove('open');}
 function saveCharacter(event){event.preventDefault();const obj={previewVariant,scenarioCategory:document.getElementById('scenario-category').value,scenarioStart:document.getElementById('scenario-start').value,scenarioCustom:document.getElementById('scenario-custom').value.trim(),visual:readVisualFields()};Object.keys(labels).forEach(k=>obj[k]=document.getElementById('field-'+k).value.trim());if(!obj.name)return;if(+obj.age<18||+obj.age>55){alert('Das Alter muss zwischen 18 und 55 liegen.');return;}if(editId){const idx=characters.findIndex(c=>c.id===editId);if(idx>=0)characters[idx]={...characters[idx],...obj};}else{characters.push({id:'custom-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),...obj});}persist();render();hideModal();}
