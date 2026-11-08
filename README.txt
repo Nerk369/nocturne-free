@@ -1,9 +1,8 @@
-NOCTURNE FREE 1.0
+NOCTURNE FREE 1.1
 
-1. BACKUP: In NOCTURNE 0.9 Einstellungen > Charaktere exportieren.
-2. Cloudflare Worker: NOCTURNE_WORKER_10.js in Edit code einfuegen und Deploy. Vorher Modellname pruefen; falls dein derzeit funktionierender Modellname anders lautet, diesen beibehalten.
-3. GitHub: index.html, sw.js, manifest.webmanifest, icon-192.png und icon-512.png hochladen. Worker-Datei NICHT auf GitHub laden.
-4. iPhone-App aktualisieren, nicht deinstallieren.
-5. Im Chat: Erinnerungen oeffnen. Im Charaktereditor: eigenes Portraet hochladen.
-
-Automatische Erinnerungen sind optional und basieren auf einfachen Textmustern; keine echte KI-Faktenextraktion. Bilder werden lokal gespeichert, nicht generiert.
+Backup zuerst: Einstellungen > Charaktere exportieren.
+GitHub Pages: index.html, sw.js, manifest.webmanifest, icon-192.png und icon-512.png im Repository-Hauptordner ersetzen.
+Cloudflare Worker: KEINE Änderung erforderlich. Die bestehende KI-Anbindung bleibt erhalten.
+Neue Funktionen: visueller Charaktereditor, Ganzkörper-/Szenen-/Selfie-Prompts, lokale Galerie, Export/Import.
+Es wird weiterhin KEIN KI-Bild generiert. Die Galerie speichert eigene hochgeladene Bilder lokal.
+Bei alter Anzeige PWA schließen und erneut öffnen; keinesfalls App löschen, bevor ein Backup erstellt wurde.
