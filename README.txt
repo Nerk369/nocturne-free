@@ -1,9 +1,13 @@
-NOCTURNE FREE 1.4
+NOCTURNE 2.0 PREVIEW – local media library and relationship bar
 
-GitHub Pages: Alle App-Dateien aus diesem ZIP im Repository ersetzen und committen. Cloudflare Worker 1.2 bleibt unverändert.
+This is a development preview, not the finished 2.0 release.
 
-Neu: Charakter dauerhaft löschen (mit Namensbestätigung); neues Gothic-Rosen-Icon; Outfit, Pose und Umgebung nur pro Bildanfrage; quadratische Galerie-Vorschau und hochformatige Großansicht (ohne Änderung des vom Modell gelieferten Originalformats); verbesserte Selfie- und Ganzkörper-Prompts; wählbarer Beziehungsstil.
+NEW: IndexedDB media import (multiple images/videos), per-character Master/Selfies/Rewards, 20 reward levels, chat selfie delivery, relationship progress bar, and simple XP heuristic.
 
-WICHTIG: FLUX Schnell liefert derzeit oft quadratische Bilder. Die 9:16-Großansicht ist eine Darstellung mit Rand, keine echte 9:16-Generierung. Masterbilder werden NICHT als Bildreferenz an FLUX übertragen. Eine garantierte Gesichtskonsistenz oder eine echte Beziehungsfortschrittslogik ist noch nicht implementiert.
+IMPORTANT: True AI-based relationship scoring is NOT yet implemented; XP currently uses message activity and a transparent keyword heuristic. Gemini chat is still connected through the existing Worker. English is sent as the character language for chat requests; some legacy editor labels and initial messages remain German.
 
-Vor dem Update Daten unter Einstellungen exportieren. Installierte iPhone-App nicht löschen.
+The app cannot directly monitor folders in iOS Files; import media through the Media Library screen. Original files stay in Files.
+
+Back up the old app data before upgrading. Old localStorage data is retained by this preview, while new media is stored in IndexedDB. The legacy JSON backup does NOT include new IndexedDB media. Keep original images/videos separately.
+
+Use GitHub Pages to host these files. No Worker changes required for local media.
