@@ -76,7 +76,7 @@ select.field{appearance:auto} .form-grid{display:grid;grid-template-columns:1fr 
 
 .chat-identity{flex:1;min-width:0}.relationship-bar{display:block;margin-top:7px;width:100%;min-width:0;max-width:330px;visibility:visible;opacity:1}.rel-label{display:flex;justify-content:space-between;font-size:10px;color:#c7a8dc;gap:12px}.rel-track{height:5px;border-radius:20px;background:#3d304a;margin-top:5px;overflow:hidden}.rel-fill{height:100%;background:#b47ce2;border-radius:20px}.level-notice{text-align:center;color:#d7afea;font-size:12px;margin:10px}.reward-level{border-bottom:1px solid #3a3040;padding:12px 0}.reward-heading{font-size:13px;font-weight:700;margin-bottom:8px;color:#d8b8ed}.media-locked{padding:16px;color:#9f93ab;background:#211b29;border-radius:10px;text-align:center}.media-tile{position:relative;min-width:0}.media-tile img,.media-tile video{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;cursor:pointer}.media-actions button{font-size:11px;background:#30253b;border:1px solid #584669;color:#eee;border-radius:7px;padding:5px 8px}.local-media-body img,.local-media-body video{max-width:92vw;max-height:82dvh;object-fit:contain}.reward-grid{display:block}
 </style>
-<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png"></head>
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png"><meta name="nocturne-build" content="2.0.4"></head>
 <body><div class="app">
 <header><div><div class="brand">NOCTURNE</div><div class="sub">YOUR PRIVATE AI COMPANION</div></div><span class="pill">FREE · V2.0.2</span></header>
 <section id="home" class="view active"><h1>Deine Welt.</h1><div class="muted">Wähle eine Begleitung oder erschaffe einen neuen Charakter.</div><div class="section-head"><h2>Deine Charaktere</h2><span class="muted" id="count"></span></div><div class="cards" id="character-list"></div><div class="panel"><div style="font-family:Georgia,serif;font-size:17px">Ein Raum nur für dich.</div><p class="muted">Deine Charaktere werden lokal auf diesem Gerät gespeichert. NOCTURNE FREE nutzt derzeit keine bezahlten APIs. Mit einem eigenen kostenlosen Cloudflare-Worker kannst du echte KI-Chats aktivieren.</p></div></section>
@@ -150,24 +150,44 @@ function relationshipControls(c){
  const note=document.createElement('p');note.className='muted';note.textContent='Sets the relationship tone. Relationship progress is shown in chat; provider safety rules still apply.';wrap.appendChild(note);
  const sel=document.createElement('select');sel.id='relationship-style';sel.className='field';relationshipStyles.forEach(x=>sel.add(new Option(x,x)));sel.value=relationshipStyles.includes(c?.relationshipStyle)?c.relationshipStyle:'Langsames Kennenlernen';wrap.appendChild(sel);return wrap;
 }
-function showModal(id=null){editId=id;const c=characters.find(x=>x.id===id);document.getElementById('modal-title').textContent=c?'Charakter bearbeiten':'Charakter erstellen';const wrap=document.getElementById('form-fields');wrap.innerHTML='';Object.keys(labels).forEach(key=>wrap.appendChild(field(key,c)));previewVariant=c?.previewVariant||0;document.getElementById('delete-character-btn').style.display=c?'block':'none';wrap.appendChild(scenarioControls(c));wrap.appendChild(relationshipControls(c));wrap.appendChild(previewControls());wrap.appendChild(photoControls(c));wrap.appendChild(editorMediaControls(c));wrap.querySelectorAll('select').forEach(el=>el.addEventListener('change',updatePreview));document.getElementById('modal').classList.add('open');updatePreview();}
+function showModal(id=null){document.getElementById('delete-confirm-box')?.remove();editId=id;const c=characters.find(x=>x.id===id);document.getElementById('modal-title').textContent=c?'Charakter bearbeiten':'Charakter erstellen';const wrap=document.getElementById('form-fields');wrap.innerHTML='';Object.keys(labels).forEach(key=>wrap.appendChild(field(key,c)));previewVariant=c?.previewVariant||0;document.getElementById('delete-character-btn').style.display=c?'block':'none';wrap.appendChild(scenarioControls(c));wrap.appendChild(relationshipControls(c));wrap.appendChild(previewControls());wrap.appendChild(photoControls(c));wrap.appendChild(editorMediaControls(c));wrap.querySelectorAll('select').forEach(el=>el.addEventListener('change',updatePreview));document.getElementById('modal').classList.add('open');updatePreview();}
 function hideModal(){document.getElementById('modal').classList.remove('open');}
 function saveCharacter(event){event.preventDefault();const obj={previewVariant,scenarioCategory:document.getElementById('scenario-category').value,scenarioStart:document.getElementById('scenario-start').value,scenarioCustom:document.getElementById('scenario-custom').value.trim(),relationshipStyle:document.getElementById('relationship-style')?.value||'Langsames Kennenlernen'};Object.keys(labels).forEach(k=>obj[k]=document.getElementById('field-'+k).value.trim());if(!obj.name)return;if(+obj.age<18||+obj.age>55){alert('Das Alter muss zwischen 18 und 55 liegen.');return;}if(editId){const idx=characters.findIndex(c=>c.id===editId);if(idx>=0)characters[idx]={...characters[idx],...obj};}else{characters.push({id:'custom-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),...obj});}persist();render();hideModal();renderGallery();}
 function deleteCharacter(){
  const c=characters.find(x=>x.id===editId);if(!c)return;
- if(sending){alert('Bitte warten, bis die laufende Chat-Anfrage abgeschlossen ist.');return;}
- if(!confirm('„'+c.name+'“ dauerhaft löschen? Damit werden auch der Chatverlauf, Erinnerungen, Galerie, Masterbild und das Porträt auf diesem Gerät entfernt. Exportierte Sicherungen bleiben bestehen.'))return;
- const typed=prompt('Zur Bestätigung den Charakternamen exakt eingeben: '+c.name);
- if(typed!==c.name){if(typed!==null)alert('Name stimmt nicht überein. Nichts gelöscht.');return;}
- const id=c.id;
- clearCharacterMedia(id).catch(console.error);characters=characters.filter(x=>x.id!==id);delete conversations[id];delete memories[id];delete portraits[id];delete galleryImages[id];delete masterImages[id];
- // Save every affected local storage area; deleted images no longer count against quota.
- persist();persistChats();saveMemories();saveGallery();
- localStorage.setItem(PHOTO_KEY,JSON.stringify(portraits));localStorage.setItem(MASTER_KEY,JSON.stringify(masterImages));
- if(current===id){current=null;showView('home')}
- hideModal();render();renderGallery();
- alert('„'+c.name+'“ und die zugehörigen lokalen Daten wurden gelöscht.');
+ if(sending){alert('Please wait until the chat request finishes.');return}
+ const box=document.getElementById('delete-confirm-box');
+ if(box){box.remove();return}
+ const container=document.createElement('div');container.id='delete-confirm-box';
+ container.style.cssText='margin-top:12px;padding:12px;border:1px solid #8b536d;border-radius:10px';
+ const description=document.createElement('p');description.textContent='To permanently delete '+c.name+', type the exact character name. This also deletes local media and chats.';
+ const input=document.createElement('input');input.className='field';input.placeholder=c.name;input.autocomplete='off';
+ const confirmButton=document.createElement('button');confirmButton.type='button';confirmButton.className='small-btn danger';confirmButton.textContent='Permanently delete character';
+ confirmButton.onclick=async()=>{
+  if(input.value.trim()!==c.name){alert('Name does not match. Nothing deleted.');return}
+  confirmButton.disabled=true;
+  const id=c.id;
+  try{
+   await clearCharacterMedia(id);
+   characters=characters.filter(x=>x.id!==id);
+   delete conversations[id];delete memories[id];delete portraits[id];
+   delete galleryImages[id];delete masterImages[id];
+   const rel=relAll();delete rel[id];localStorage.setItem(REL_KEY,JSON.stringify(rel));
+   const url=masterPortraitUrls.get(id);if(url)URL.revokeObjectURL(url);masterPortraitUrls.delete(id);
+   localStorage.removeItem('nocturne-selfie-state-'+id);
+   localStorage.removeItem('nocturne-selfie-order-'+id);
+   persist();persistChats();saveMemories();saveGallery();
+   localStorage.setItem(PHOTO_KEY,JSON.stringify(portraits));
+   localStorage.setItem(MASTER_KEY,JSON.stringify(masterImages));
+   if(current===id)current=characters[0]?.id||null;
+   hideModal();render();await renderGallery();showView('home');
+   alert('Character deleted.');
+  }catch(err){console.error(err);alert('Deletion failed: '+err.message);confirmButton.disabled=false}
+ };
+ container.append(description,input,confirmButton);
+ document.getElementById('delete-character-btn').after(container);input.focus();
 }
+
 const CHAT_KEY='nocturne_chats_v08';const WORKER_KEY='nocturne_worker_url_v08';const TOKEN_KEY='nocturne_access_token_v09';
 function loadChats(){try{const x=JSON.parse(localStorage.getItem(CHAT_KEY));return x&&typeof x==='object'&&!Array.isArray(x)?x:{}}catch{return {}}}
 conversations=loadChats();
@@ -180,7 +200,7 @@ function saveWorkerUrl(){const value=document.getElementById('worker-url').value
 function clearWorkerUrl(){localStorage.removeItem(WORKER_KEY);document.getElementById('worker-url').value='';document.getElementById('worker-status').textContent='Getrennt. Demo-Modus aktiv.';updateChatMode()}
 async function testWorker(){const status=document.getElementById('worker-status');if(!workerUrl()){status.textContent='Zuerst Worker-URL speichern.';return}status.textContent='Verbindung wird geprüft …';try{const r=await fetch(workerUrl()+'/health',{signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error('HTTP '+r.status);const data=await r.json();if(!data.ok)throw Error('Ungültige Antwort');status.textContent='Worker erreichbar. '+(data.configured?'KI-Schlüssel konfiguriert.':'KI-Schlüssel fehlt noch.')}catch(e){status.textContent='Verbindung fehlgeschlagen: '+e.message}}
 function updateChatMode(){const node=document.getElementById('chat-mode');if(node)node.textContent=workerUrl()?'KI verbunden (sofern Worker eingerichtet)':'Offline-Demo · KI nicht verbunden'}
-function openChat(id){current=id;const c=characters.find(x=>x.id===id);if(!c)return;document.getElementById('chat-name').textContent=c.name;document.getElementById('chat-title').textContent=c.name;document.getElementById('chat-avatar').innerHTML=portraitMarkup(c);if(!conversations[id]){conversations[id]=[{text:(c.language==='Englisch'?'Hey! It’s lovely to see you. 😊 I’m ':'Hey! Schön, dass du da bist. 😊 Ich bin ')+c.name+'.',me:false}];persistChats()}renderMessages();updateChatMode();updateRelationshipBar();showView('chat')}
+function openChat(id){refreshMasterPortrait(id).catch(console.error);current=id;const c=characters.find(x=>x.id===id);if(!c)return;document.getElementById('chat-name').textContent=c.name;document.getElementById('chat-title').textContent=c.name;document.getElementById('chat-avatar').innerHTML=portraitMarkup(c);if(!conversations[id]){conversations[id]=[{text:(c.language==='Englisch'?'Hey! It’s lovely to see you. 😊 I’m ':'Hey! Schön, dass du da bist. 😊 Ich bin ')+c.name+'.',me:false}];persistChats()}renderMessages();updateChatMode();updateRelationshipBar();showView('chat')}
 function renderMessages(){
  const box=document.getElementById('messages');box.innerHTML='';
  (conversations[current]||[]).forEach(m=>{
@@ -208,7 +228,7 @@ function selfieApproved(reply){
  return /\b(here(?:'s| is) (?:a|my|the|your) (?:selfie|photo|picture)|sending (?:you )?(?:a|my) (?:selfie|photo|picture)|just (?:sent|snapped) (?:you )?(?:a|my) (?:selfie|photo|picture)|(?:sure|of course|absolutely|okay|ok|yes)[!,. ]{0,8}(?:here|i(?:'ll| will) send|sending))\b/i.test(t);
 }
 let sending=false;
-async function sendMessage(){if(sending)return;const i=document.getElementById('message-input');const value=i.value.trim();if(!value)return;const id=current,c=characters.find(x=>x.id===id);if(!c)return;if(!conversations[id])conversations[id]=[];conversations[id].push({text:value,me:true});i.value='';persistChats();renderMessages();if(!workerUrl()){conversations[id].push({text:c.language==='Englisch'?'Offline demo: connect your free AI Worker in Settings for real replies. ✨':'Offline-Demo: Verbinde unter Einstellungen deinen kostenlosen KI-Worker für echte Antworten. ✨',me:false});persistChats();renderMessages();return}
+async function sendMessage(){if(sending)return;const i=document.getElementById('message-input');const value=i.value.trim();if(!value)return;const id=current,c=characters.find(x=>x.id===id);if(!c)return;if(!conversations[id])conversations[id]=[];conversations[id].push({text:value,me:true});i.value='';persistChats();try{renderMessages()}catch(err){console.error('Chat display:',err)}if(!workerUrl()){conversations[id].push({text:c.language==='Englisch'?'Offline demo: connect your free AI Worker in Settings for real replies. ✨':'Offline-Demo: Verbinde unter Einstellungen deinen kostenlosen KI-Worker für echte Antworten. ✨',me:false});persistChats();renderMessages();return}
  if(!accessToken()){alert('Bitte zuerst unter Einstellungen deinen NOCTURNE-Zugangscode speichern.');return}
  sending=true;const sendButton=document.querySelector('.chat-compose .send');sendButton.disabled=true;sendButton.textContent='…';try{const history=conversations[id].slice(-24).map(m=>({role:m.me?'user':'model',text:m.text}));const response=await fetch(workerUrl()+'/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+accessToken()},body:JSON.stringify({character:{name:c.name,age:c.age,personality:c.personality+' Relationship tone: '+(c.relationshipStyle||'Langsames Kennenlernen')+'. Allow natural non-explicit romantic dialogue consistent with personality; do not claim that the character is forbidden from all flirting.',language:'English',writing:c.writing,length:c.length,emoji:c.emoji,scenarioCategory:c.scenarioCategory,scenarioStart:c.scenarioStart,scenarioCustom:c.scenarioCustom},memory:(memories[id]||[]).filter(m=>m.active!==false).slice(0,20).map(m=>m.text),history}),signal:AbortSignal.timeout(45000)});const data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.error||'HTTP '+response.status);if(typeof data.reply!=='string'||!data.reply.trim())throw Error('Leere KI-Antwort');conversations[id].push({text:data.reply.trim(),me:false});persistChats();if(memoryAuto)detectMemory(id,value);if(current===id)renderMessages();
  await advanceRelationship(id,value,data.reply);
@@ -318,9 +338,42 @@ function closeLocalMedia(){const modal=document.getElementById('local-media-view
 async function renderGallery(){const sel=document.getElementById('gallery-character');if(!sel)return;const previous=sel.value||current;sel.replaceChildren();characters.forEach(c=>sel.add(new Option(c.name,c.id)));sel.value=characters.some(c=>c.id===previous)?previous:characters[0]?.id||'';const id=sel.value;if(!id)return;revokeMediaUrls();const list=await allMedia(id),selfies=document.getElementById('selfie-items'),rewards=document.getElementById('reward-items');if(sel.value!==id)return;selfies.replaceChildren();rewards.replaceChildren();const sentIds=new Set((conversations[id]||[]).filter(m=>!m.me&&m.localMediaId).map(m=>m.localMediaId));const sent=list.filter(m=>m.category==='selfie'&&sentIds.has(m.id));for(const m of sent)selfies.append(makeMediaTile(m,false,false));if(!sent.length){const t=document.createElement('p');t.className='muted';t.textContent='No selfies received yet.';selfies.append(t)}const unlocked=relationship(id).peak||0;for(let lvl=1;lvl<=20;lvl++){const group=document.createElement('div');group.className='reward-level';const heading=document.createElement('div');heading.className='reward-heading';heading.textContent='Level '+lvl+' · '+(lvl<=unlocked?'Unlocked':'Locked');group.append(heading);const items=list.filter(m=>m.category==='reward'&&m.level===lvl);if(lvl<=unlocked){if(items.length){const grid=document.createElement('div');grid.className='gallery';items.forEach(m=>grid.append(makeMediaTile(m,false,false)));group.append(grid)}else{const t=document.createElement('div');t.className='muted';t.textContent='No reward added yet';group.append(t)}}else{const t=document.createElement('div');t.className='media-locked';t.textContent='🔒 '+items.length+' reward(s)';group.append(t)}rewards.append(group)}}
 function requestSelfieInChat(){const input=document.getElementById('message-input');input.value='Could you send me a selfie?';input.focus()}
 async function sendLocalSelfie(id=current){const list=(await allMedia(id)).filter(m=>m.category==='selfie'&&m.mime.startsWith('image/')).sort((a,b)=>a.created-b.created);if(!list.length){if(current===id)alert('No selfies imported for this character yet. Add some in Character Editor.');return}const key='nocturne-selfie-state-'+id,mode=localStorage.getItem('nocturne-selfie-order-'+id)||'random';let state;try{state=JSON.parse(localStorage.getItem(key))||{}}catch{state={}}const ids=list.map(m=>m.id);let chosen;if(mode==='sequential'){const index=Number(state.index||0)%ids.length;chosen=ids[index];state={index:index+1}}else{let remaining=(state.remaining||[]).filter(x=>ids.includes(x));if(!remaining.length)remaining=[...ids];const index=Math.floor(Math.random()*remaining.length);chosen=remaining.splice(index,1)[0];state={remaining}}localStorage.setItem(key,JSON.stringify(state));conversations[id] ||= [];conversations[id].push({localMediaId:chosen,text:'📷 A selfie for you!',me:false});persistChats();if(current===id)renderMessages()}
-const previousRenderMessages=renderMessages;
-renderMessages=function(){const box=document.getElementById('messages');box.replaceChildren();(conversations[current]||[]).forEach(m=>{if(!m.localMediaId){const div=document.createElement('div');div.className='bubble'+(m.me?' me':'');if(m.imageId){const image=(galleryImages[current]||[]).find(x=>x.id===m.imageId);if(image){div.classList.add('photo-message');const img=document.createElement('img');img.src=image.data;div.append(img);div.onclick=()=>openImageViewer(image.data)}else div.textContent='Previous image unavailable'}else div.textContent=m.text||'';box.append(div)}else{const div=document.createElement('div');div.className='bubble photo-message';div.textContent='📷 Loading selfie…';box.append(div);const id=current;allMedia(id).then(items=>{if(current!==id)return;const found=items.find(x=>x.id===m.localMediaId);if(!found){div.textContent='Selfie was removed';return}div.replaceChildren();const img=document.createElement('img');img.src=mediaUrl(found.blob);img.onclick=()=>openLocalMedia(found);div.append(img);const caption=document.createElement('div');caption.className='photo-caption';caption.textContent=m.text||'Selfie';div.append(caption)}).catch(()=>{div.textContent='Could not load selfie'})}});box.scrollTop=box.scrollHeight};
-render();renderGallery();document.getElementById('worker-url').value=workerUrl();document.getElementById('token-status').textContent=accessToken()?'Zugangscode lokal gespeichert.':'Noch kein Zugangscode gespeichert.';openChat('alexandra');showView('home');renderBudget();
+// Chat renderer: text messages must never depend on IndexedDB availability.
+renderMessages=function(){
+ const box=document.getElementById('messages');if(!box)return;
+ box.replaceChildren();
+ const chatId=current;
+ for(const m of (conversations[chatId]||[])){
+  const div=document.createElement('div');
+  div.className='bubble'+(m.me?' me':'');
+  if(m.localMediaId){
+   div.classList.add('photo-message');
+   div.textContent='📷 Loading selfie…';
+   box.append(div);
+   allMedia(chatId).then(items=>{
+    if(current!==chatId||!div.isConnected)return;
+    const found=items.find(x=>x.id===m.localMediaId);
+    if(!found){div.textContent='Selfie unavailable';return}
+    div.replaceChildren();
+    const img=document.createElement('img');img.src=mediaUrl(found.blob);
+    img.onclick=()=>openLocalMedia(found);
+    div.append(img);
+    const caption=document.createElement('div');caption.className='photo-caption';
+    caption.textContent=m.text||'Selfie';div.append(caption);
+   }).catch(err=>{console.error('Selfie display:',err);div.textContent='Could not load selfie'});
+  }else{
+   if(m.imageId){
+    const old=(galleryImages[chatId]||[]).find(x=>x.id===m.imageId);
+    if(old){const img=document.createElement('img');img.src=old.data;div.append(img);img.onclick=()=>openImageViewer(old.data)}
+    else div.textContent='Previous image unavailable';
+   }else div.textContent=m.text||'';
+   box.append(div);
+  }
+ }
+ box.scrollTop=box.scrollHeight;
+};
+
+render();renderGallery().catch(console.error);document.getElementById('worker-url').value=workerUrl();document.getElementById('token-status').textContent=accessToken()?'Zugangscode lokal gespeichert.':'Noch kein Zugangscode gespeichert.';openChat('alexandra');showView('home');renderBudget();
 
 refreshAllMasterPortraits().catch(console.error);
 </script></body></html>
